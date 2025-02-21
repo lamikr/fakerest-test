@@ -1,0 +1,2 @@
+#define brightsign_VERSION_MAJOR @brightsign_VERSION_MAJOR@
+#define brightsign_VERSION_MINOR @brightsign_VERSION_MINOR@
