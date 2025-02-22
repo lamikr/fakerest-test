@@ -51,9 +51,9 @@ public:
 	}
 };
 
-class BrightsignCityData {
+class BSDJSONParserBase {
 public:
-	BrightsignCityData(std::string json_val_field_name) {
+	BSDJSONParserBase(std::string json_val_field_name) {
 		json_value_field_name	= json_val_field_name;
 	}
 protected:
@@ -61,6 +61,10 @@ protected:
 	std::string city_name;
 	long user_count;
 	long value_sum;
+
+	bool is_valid_name(std::string name) {
+		return !name.empty();
+	}
 
 	virtual float get_avg_value() {
 		float ret = 0;
@@ -85,7 +89,7 @@ protected:
 	}
 
 	/**
-	 * This method converts the city name and average age related data to json object for single city.
+	 * Converts the city name and average value related data to JSON object for single city.
 	 *
 	 * @return json object containing city name and average age of users
 	 */
@@ -93,12 +97,11 @@ protected:
 		json ret = {{"city", city_name}, {json_value_field_name, get_avg_value_as_string(CONST_DECIMAL_COUNT)}};
 		return ret;
 	}
-
 };
 
-class BrightsignCityAvgUserAge : public BrightsignCityData {
+class BSDAverageUserAge : public BSDJSONParserBase {
 public:
-	BrightsignCityAvgUserAge() : BrightsignCityData("avg") {
+	BSDAverageUserAge() : BSDJSONParserBase("avg") {
 
 	}
 	/**
@@ -107,7 +110,7 @@ public:
 	 * @param js is the rootlevel json structure returned by the brightsign REST-API
 	 */
 	json get_results(json js) {
-		std::unordered_map<std::string, BrightsignCityAvgUserAge> map_param;
+		std::unordered_map<std::string, BSDAverageUserAge> map_param;
 		json ret;
 
 		for (std::size_t ii = 0; ii < js.size(); ii++) {
@@ -116,13 +119,13 @@ public:
 			//std::cout << "city: " << city << std::endl;
 
 			if(map_param.count(city) == 1) {
-				BrightsignCityAvgUserAge &ubc = map_param[city];
+				BSDAverageUserAge &ubc = map_param[city];
 				ubc.value_sum = ubc.value_sum + age;
 				ubc.user_count = ubc.user_count + 1;
 				map_param[city] = ubc;
 			}
 			else{
-				BrightsignCityAvgUserAge ubc;
+				BSDAverageUserAge ubc;
 				ubc.value_sum = age;
 				ubc.user_count = 1;
 				ubc.city_name = city;
@@ -130,25 +133,25 @@ public:
 			}
 			//InsertOrAssign
 		}
-		ret["name"] = "AverageUserAgeByCity";
-		ret["description"] = "users average age per city";
+		//ret["name"] = "AverageUserAgeByCity";
+		//ret["description"] = "users average age per city";
 		json data_array = json::array();
 		for (const auto& pair : map_param) {
-			BrightsignCityAvgUserAge ubc = pair.second;
+			BSDAverageUserAge ubc = pair.second;
 			data_array.push_back(ubc.to_json());
 			//	ubc.printout_info();
 			//std::cout << "city: " << pair.first << ", Value: " << pair.second << std::endl;
 		}
-		ret["users_age_by_city"] = data_array;
+		ret["users_average_age_by_city"] = data_array;
 		//std::string json_string = ret.dump();
 		//std::cout << json_string << std::endl;
 		return ret;
 	}
 };
 
-class BrightsignCityAvgUserFriendCount : public BrightsignCityData {
+class BSDAverageFriendCount : public BSDJSONParserBase {
 public:
-	BrightsignCityAvgUserFriendCount() : BrightsignCityData("avg") {
+	BSDAverageFriendCount() : BSDJSONParserBase("avg") {
 	}
 	/**
 	 * Parses the brightsign root level JSON data to find the average age of users in city.
@@ -156,7 +159,7 @@ public:
 	 * @param js is the rootlevel json structure returned by the brightsign REST-API
 	 */
 	json get_results(json js) {
-		std::unordered_map<std::string, BrightsignCityAvgUserFriendCount> map_param;
+		std::unordered_map<std::string, BSDAverageFriendCount> map_param;
 		json ret;
 
 		for (std::size_t ii = 0; ii < js.size(); ii++) {
@@ -168,29 +171,248 @@ public:
 				friend_cnt = child_array.size();
 			}
 			if(map_param.count(city) == 1) {
-				BrightsignCityAvgUserFriendCount &ubc = map_param[city];
+				BSDAverageFriendCount &ubc = map_param[city];
 				ubc.value_sum = ubc.value_sum + friend_cnt;
 				ubc.user_count = ubc.user_count + 1;
 				map_param[city] = ubc;
 			}
 			else{
-				BrightsignCityAvgUserFriendCount ubc;
+				BSDAverageFriendCount ubc;
 				ubc.value_sum = friend_cnt;
 				ubc.user_count = 1;
 				ubc.city_name = city;
 				map_param[city] = ubc;
 			}
 		}
-		ret["name"] = "AverageFriendCountByCity";
-		ret["description"] = "users average friend count per city";
+		//ret["name"] = "AverageFriendCountByCity";
+		//ret["description"] = "users average friend count per city";
 		json data_array = json::array();
 		for (const auto& pair : map_param) {
-			BrightsignCityAvgUserFriendCount ubc = pair.second;
+			BSDAverageFriendCount ubc = pair.second;
 			data_array.push_back(ubc.to_json());
 			//	ubc.printout_info();
 			//std::cout << "city: " << pair.first << ", Value: " << pair.second << std::endl;
 		}
-		ret["users_friend_count_by_city"] = data_array;
+		ret["users_average_friend_count_by_city"] = data_array;
+		return ret;
+	}
+};
+
+class BSDUserWithBiggestFriendCount : BSDJSONParserBase {
+public:
+	std::string city_name;
+	json json_user_arr;
+
+	BSDUserWithBiggestFriendCount() : BSDJSONParserBase("friend_count") {
+	}
+
+	/**
+	 * Converts the city name and average value related data to JSON object for single city.
+	 *
+	 * @return json object containing city name and average age of users
+	 */
+	json to_json() {
+		json ret = {{"city", city_name}, {json_value_field_name, std::to_string(value_sum)}, {"users", json_user_arr}};
+		return ret;
+	}
+
+	json create_user_json(long id, std::string name) {
+		json ret;
+
+		ret["id"] = id;
+		ret["name"] = name;
+		return ret;
+	}
+
+	/**
+	 * Parses the brightsign root level JSON data to find the average age of users in city.
+	 *
+	 * @param js is the rootlevel json structure returned by the brightsign REST-API
+	 */
+	json get_results(json js) {
+		std::unordered_map<std::string, BSDUserWithBiggestFriendCount> map_param;
+		json ret;
+
+		for (std::size_t ii = 0; ii < js.size(); ii++) {
+			std::string city = js[ii]["city"];
+			long user_id =  js[ii]["id"];
+			std::string user_name = js[ii]["name"];
+
+			json child_array = js[ii]["friends"];
+			long friend_cnt = 0;
+
+			if (child_array.is_array()) {
+				friend_cnt = child_array.size();
+			}
+			if(map_param.count(city) == 1) {
+				BSDUserWithBiggestFriendCount &ubc = map_param[city];
+				if (friend_cnt > ubc.value_sum) {
+					// reset previously stored user data becaue
+					// this user has more friends than the one stored previously
+					ubc.value_sum = friend_cnt;
+					ubc.json_user_arr.clear();
+				}
+				if (friend_cnt == ubc.value_sum) {
+					json user_json = create_user_json(user_id, user_name);
+					ubc.json_user_arr.push_back(user_json);
+				}
+				map_param[city] = ubc;
+			}
+			else{
+				// data for this city is not yet in the map
+				BSDUserWithBiggestFriendCount ubc;
+				ubc.value_sum = friend_cnt;
+				ubc.user_count = 1;
+				ubc.city_name = city;
+				json user_json = create_user_json(user_id, user_name);
+				ubc.json_user_arr.push_back(user_json);
+				map_param[city] = ubc;
+			}
+		}
+		//ret["name"] = "UsersWithMostFriendsByCity";
+		//ret["description"] = "users having most friends by city";
+		json data_array = json::array();
+		for (const auto& pair : map_param) {
+			BSDUserWithBiggestFriendCount ubc = pair.second;
+			data_array.push_back(ubc.to_json());
+			//	ubc.printout_info();
+			//std::cout << "city: " << pair.first << ", Value: " << pair.second << std::endl;
+		}
+		ret["most_friends_by_city"] = data_array;
+		return ret;
+	}
+};
+
+class BSDMostComonFirstName : BSDJSONParserBase {
+public:
+	json json_first_name_arr;
+
+	BSDMostComonFirstName() : BSDJSONParserBase("") {
+	}
+
+	/**
+	 * Converts the city name and average value related data to JSON object for single city.
+	 *
+	 * @return json object containing city name and average age of users
+	 */
+	json to_json() {
+		json ret = {{"name", json_first_name_arr}};
+		return ret;
+	}
+
+	/**
+	 * Parses the brightsign root level JSON data to find the average age of users in city.
+	 *
+	 * @param js is the rootlevel json structure returned by the brightsign REST-API
+	 */
+	json get_results(json js) {
+		std::map<std::string, int> map_value_cnt;
+		int biggest_value_cnt;
+		int cur_value_cnt;
+		json ret;
+
+		biggest_value_cnt = 0;
+		for (std::size_t ii = 0; ii < js.size(); ii++) {
+			std::string user_name = js[ii]["name"];
+			if (is_valid_name(user_name)) {
+				map_value_cnt[user_name]++;
+				if (map_value_cnt[user_name] > biggest_value_cnt) {
+					biggest_value_cnt = map_value_cnt[user_name];
+				}
+			}
+			json riends_array = js[ii]["friends"];
+			long friend_cnt = 0;
+
+			if (riends_array.is_array()) {
+				friend_cnt = riends_array.size();
+				for (int jj = 0; jj < friend_cnt; jj++) {
+					std::string user_name = riends_array[jj]["name"];
+					if (is_valid_name(user_name)) {
+						map_value_cnt[user_name]++;
+						if (map_value_cnt[user_name] > biggest_value_cnt) {
+							biggest_value_cnt = map_value_cnt[user_name];
+						}
+					}
+				}
+			}
+		}
+		ret["count"] = std::to_string(biggest_value_cnt);
+		json data_array = json::array();
+		// Iterate through the map using a range-based for loop (C++11 and later)
+		for (const auto& pair : map_value_cnt) {
+			if (pair.second == biggest_value_cnt) {
+				data_array.push_back(pair.first);
+			}
+			//std::cout << pair.first << ": " << std::to_string(pair.second) << std::endl;
+		}
+		//
+		ret["most_common_first_name"] = data_array;
+		return ret;
+	}
+};
+
+class BSDMostCommonHobby : BSDJSONParserBase {
+public:
+	json json_first_name_arr;
+
+	BSDMostCommonHobby() : BSDJSONParserBase("") {
+	}
+
+	/**
+	 * Converts the city name and average value related data to JSON object for single city.
+	 *
+	 * @return json object containing city name and average age of users
+	 */
+	json to_json() {
+		json ret = {{"name", json_first_name_arr}};
+		return ret;
+	}
+
+	/**
+	 * Parses the brightsign root level JSON data to find the average age of users in city.
+	 *
+	 * @param js is the rootlevel json structure returned by the brightsign REST-API
+	 */
+	json get_results(json js) {
+		std::map<std::string, int> map_value_cnt;
+		int biggest_value_cnt;
+		int cur_value_cnt;
+		json ret;
+
+		biggest_value_cnt = 0;
+		for (std::size_t ii = 0; ii < js.size(); ii++) {
+			std::string hobby_name;
+			json friend_array = js[ii]["friends"];
+			long friend_cnt = 0;
+			long hobby_cnt = 0;
+
+			if (friend_array.is_array()) {
+				friend_cnt = friend_array.size();
+				for (int jj = 0; jj < friend_cnt; jj++) {
+					json hobby_array = friend_array[jj]["hobbies"];
+					if (hobby_array.is_array()) {
+						for (int kk = 0; kk < hobby_array.size(); kk++) {
+							std::string hobby_name = hobby_array[kk];
+							map_value_cnt[hobby_name]++;
+							if (map_value_cnt[hobby_name] > biggest_value_cnt) {
+								biggest_value_cnt = map_value_cnt[hobby_name];
+							}
+						}
+					}
+				}
+			}
+		}
+		ret["count"] = std::to_string(biggest_value_cnt);
+		json data_array = json::array();
+		// Iterate through the map using a range-based for loop (C++11 and later)
+		for (const auto& pair : map_value_cnt) {
+			if (pair.second == biggest_value_cnt) {
+				data_array.push_back(pair.first);
+			}
+			//std::cout << pair.first << ": " << std::to_string(pair.second) << std::endl;
+		}
+		//
+		ret["most_common_hobby"] = data_array;
 		return ret;
 	}
 };
@@ -214,7 +436,7 @@ public:
 			file >> ret;
 		}
 		else {
-			std::cerr << "Error opening file" << std::endl;
+			std::cerr << "Error opening file: " << fname << std::endl;
 		}
 		return ret;
 	}
@@ -234,47 +456,22 @@ public:
 			cpr_session.SetOption(cpr::Verbose{true});
 			cpr::Response response = cpr_session.Get(); // Example: http://jsonplaceholder.typicode.com/todos/1
 
-			// Example POST request (comment out GET if you want to test POST):
-			/*
-			json data;
-			data["userId"] = 1;
-			data["title"] = "My Todo";
-			data["completed"] = false;
-
-			cpr::Response response = cpr::Post(cpr::Url{"http://your-api-endpoint/todos"},
-											cpr::Body{data.dump()},
-											cpr::Header{{"Content-Type", "application/json"}});
-			*/
-
-
-			// 2. Check the response status code.
 			if (response.status_code == 200) {
-				// 3. Parse the JSON response.
 				try {
 					//std::cout << "response.text:" << std::endl;
 					//std::cout << response.text << std::endl;
 					ret = json::parse(response.text);
-
-					// 4. Process the JSON data.
-					//std::cout << j.dump(4) << std::endl;  // Pretty-print the JSON
-
-					// Example accessing data (adapt to your JSON structure):
-					/*
-					if (j.contains("title")) {
-						std::cout << "Title: " << j["title"] << std::endl;
-					}
-					*/
-
-				} catch (json::parse_error& e) {
+				}
+				catch (json::parse_error& e) {
 					std::cerr << "JSON Parse Error: " << e.what() << std::endl;
 					std::cerr << "Response Text: " << response.text << std::endl; // Important for debugging
 				}
-
-			} else {
+			}
+			else {
 				std::cerr << "HTTP Error: " << response.status_code << " - " << response.text << std::endl;
 			}
-
-		} catch (const std::exception& e) {
+		}
+		catch (const std::exception& e) {
 			std::cerr << "Error: " << e.what() << std::endl;
 		}
 		return ret;
@@ -291,14 +488,23 @@ int main() {
     	//json js = brightsign.get_all_data(url_full);
     	json js = brightsign.get_all_data_from_file("/home/lamikr/own/src/job_applications/brightsign/json/brightsign.json");
     	if (js.empty() != true) {
-    		std::cout << "JSON size: " << js.size() << std::endl;
-    		BrightsignCityAvgUserAge users_by_city;
-    		BrightsignCityAvgUserFriendCount friens_by_city;
+    		//std::cout << "JSON size: " << js.size() << std::endl;
+    		BSDAverageUserAge users_by_city;
+    		BSDAverageFriendCount friens_by_city;
+    		BSDUserWithBiggestFriendCount users_with_most_friends;
+    		BSDMostComonFirstName most_common_first_names;
+    		BSDMostCommonHobby most_common_hobby;
     		json res_json;
 
     		res_json = users_by_city.get_results(js);
     		std::cout << res_json.dump() << std::endl;
     		res_json = friens_by_city.get_results(js);
+    		std::cout << res_json.dump() << std::endl;
+    		res_json = users_with_most_friends.get_results(js);
+    		std::cout << res_json.dump() << std::endl;
+    		res_json = most_common_first_names.get_results(js);
+    		std::cout << res_json.dump() << std::endl;
+    		res_json = most_common_hobby.get_results(js);
     		std::cout << res_json.dump() << std::endl;
     	}
     	else {
