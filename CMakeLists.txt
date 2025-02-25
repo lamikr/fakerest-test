@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
+include(FetchContent)
+FetchContent_Declare(cpr GIT_REPOSITORY https://github.com/libcpr/cpr.git
+                         GIT_TAG dd967cb) # Replace with your desired git commit from: https://github.com/libcpr/cpr/releases
+FetchContent_MakeAvailable(cpr)
+
 #use -DCMAKE_BUILD_TYPE=Debug instead
 #set(CMAKE_BUILD_TYPE Debug)
 
@@ -10,8 +15,6 @@ include_directories(bsdjsonparser/include)
 project (brightsign
 	VERSION 0.1
 	DESCRIPTION "JSON API Fech and Parsing Example")
-	
-find_package(cpr REQUIRED)
 
 # This project will output an executable file
 add_executable(${PROJECT_NAME} Brightsign.cpp RestAPIHandler.cpp)

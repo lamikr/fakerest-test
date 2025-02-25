@@ -4,10 +4,13 @@
 
 Implementation is made with C++ and tested with Linux/gcc.
 
-Following libraries are required to be installed. (Tested on Linux)
+Following libraries are required to be installed. (Tested on Ubuntu 24.04)
 
-- libcpr			(REST-API management)
 - nlohmann::json	JSON-parsing
+
+In addition the build will download and build locally a following library
+
+- libcpr		(REST-API helper library over libcurl, v1.11.2)
 
 ## How to Build
 ```

@@ -10,8 +10,6 @@ cmake_minimum_required(VERSION 3.10)
 project (local_json_file_tester
 	VERSION 0.1
 	DESCRIPTION "local file json parsing tester")
-	
-find_package(cpr REQUIRED)
 
 # This project will output an executable file
 add_executable(${PROJECT_NAME} local_json_file_tester.cpp ../RestAPIHandler.cpp)
