@@ -41,7 +41,3 @@ json BSDJSONParserBase::to_json() {
 	json ret = {{"city", city_name}, {json_value_field_name, get_avg_value_as_string(CONST_DECIMAL_COUNT)}};
 	return ret;
 }
-
-int BSDJSONParserBase::getValue() const {
-    return value_sum;
-}
